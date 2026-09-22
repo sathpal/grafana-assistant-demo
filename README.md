@@ -61,6 +61,26 @@ with `goose` and a provider key (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or Ollam
 `make chaos S=reset` clears everything. Every toggle and every batch run writes a Grafana annotation, which is what the
 assistant reads first.
 
+## Use cases: where the assistant saves time, and why open source
+
+| # | Case | Human baseline | Assistant | Why it is efficient |
+|---|---|---|---|---|
+| 1 | Cross-signal root cause (Part 3) | 6 PromQL queries, a LogQL search, copy a trace id, read 28 spans: 20 to 30 min for someone fluent in all three | 9 tool calls, one report with every query quoted, under 2 min | No PromQL, LogQL or TraceQL needed on call; the log-to-trace pivot is automatic |
+| 2 | "What changed, in what order?" (Part 4) | Scrub five dashboards, note timestamps by eye, open alert history separately | Range queries at 15 s steps, first-breach times, alert history read from Loki, one timeline table | Ordering events is mechanical and error-prone for humans, trivial for a tool loop |
+| 3 | Silent failure (Part 5) | Nobody looks, because nothing is red; found hours later by an editor | Consumed-minus-published arithmetic across two counters, one log line per article, one red span | Finds a class of bug no lag or latency alert can see |
+| 4 | Write back the guard rails (Part 5) | Three UI workflows: annotation, alert rule with threshold and summary, dashboard JSON edit | Three tool calls, attributable to the service account, in the same session | The investigation leaves a better Grafana behind, not a transcript |
+| 5 | "Why did nobody get paged?" (`recipes/paged.yaml`, `evidence.py paged`) | Open each rule: state, threshold, pause flag, history | Lists paused rules and thresholds tuned for floods that miss six lost articles | One-prompt audit of things that are found only after the incident |
+| 6 | Incident update for humans | Written by hand from memory | "Write a Slack-ready update with deep links" from evidence it already holds | Free once the investigation is done; every claim is clickable |
+| 7 | Dashboard and metric hygiene (`recipes/hygiene.yaml`, `evidence.py hygiene`) | Notice a NaN p95 weeks later | Checks every panel query against Mimir, flags histograms without buckets and windows shorter than 4x the scrape interval | A scheduled recipe instead of a person; this repo lost an hour to exactly this |
+| 8 | Capacity sanity check | A spreadsheet, eventually | 300 articles x 10 variants x 20 KiB = 60 MiB into a 48 MiB tier, in the Part 4 verdict | The model is good at "does this fit", given the numbers |
+| 9 | Scheduled health report | Not done, or done badly | `goose run --recipe` from cron or CI | Recipes are files in git: no seat licence, no UI |
+| 10 | Regulated or air-gapped estates | Cloud assistants are not allowed | Same recipes with Ollama and a local model; prompts and telemetry never leave the network | Only possible because both halves are open source |
+
+Why open source, in efficiency terms: it runs where the work is (terminal, CI, cron); cost is a dial (a frontier model
+for the 02:00 root cause, a small or local model for the daily report); every call is in the MCP server log; the same
+server drives the managed Grafana Assistant too, so there is no lock-in in either direction; and a recipe in git is a
+runbook that executes itself.
+
 ## Ports and names
 
 Containers are named `cortex-*` so the `service_name` labels match the dashboards, the alert rules and the articles.

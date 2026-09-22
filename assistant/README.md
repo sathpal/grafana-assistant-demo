@@ -2,13 +2,13 @@
 
 The open-source assistant: [goose](https://github.com/block/goose) + [mcp-grafana](https://github.com/grafana/mcp-grafana).
 
-- `recipes/*.yaml` — one goose recipe per investigation (`smoke`, `problem1`, `problem2`, `problem3`). Each carries the
+- `recipes/*.yaml` — one goose recipe per investigation: `smoke`, `problem1`, `problem2`, `problem3`, plus two audits, `paged` (why did nobody get paged?) and `hygiene` (dashboard and metric hygiene). Each carries the
   six house rules as `instructions`, the prompt, and the `grafana` extension pointing at `http://localhost:8300/mcp`.
   Run: `goose run --recipe assistant/recipes/problem1.yaml`.
 - `mcp_call.py` — call any tool on the MCP server from a shell: `python3 assistant/mcp_call.py --tools`,
   `python3 assistant/mcp_call.py query_prometheus '{"datasourceUid":"grafanacloud-prom","expr":"up","queryType":"instant","startTime":"now-5m","endTime":"now"}'`.
 - `evidence.py` — prints, tool by tool, the evidence an on-call assistant gathers for each incident
-  (`part3`, `part4`, `part5`), so an audience sees exactly what the model would run.
+  (`part3`, `part4`, `part5`) and the two audits (`paged`, `hygiene`), so an audience sees exactly what the model would run.
 
 House rules (the part that makes a general agent useful on call):
 

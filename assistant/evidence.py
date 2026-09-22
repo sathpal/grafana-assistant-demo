@@ -4,12 +4,15 @@
   python3 assistant/evidence.py part3   # lag, rates, annotations, logs, the approval trace
   python3 assistant/evidence.py part4   # first-breach timeline + alert history
   python3 assistant/evidence.py part5   # consumed vs published, failures by reason, error traces
+  python3 assistant/evidence.py paged   # alert-rule audit: paused? threshold vs current value? when did it last fire?
+  python3 assistant/evidence.py hygiene # dashboard audit: missing metrics, histograms without buckets, short rate windows
 Every line shows the tool and the query, so the audience sees exactly what the assistant would run.
 """
 from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import subprocess
 import sys
 import time
@@ -198,6 +201,94 @@ def part5() -> None:
         pass
 
 
+def paged(folder: str = "CORTEX-AKS") -> None:
+    """Case 5: why did nobody get paged? The checks an assistant makes before blaming the on-call."""
+    print(f"\n\033[1m== Alert-rule audit, folder {folder}\033[0m")
+    raw = mcp("alerting_manage_rules", {"operation": "list", "search_folder": folder, "limit_alerts": 0})
+    rules = json.loads(raw) if raw.startswith("[") else []
+    hist = mcp("query_loki_logs", {"datasourceUid": HIST, "logql": '{from="state-history"} | json | current="Alerting"', "limit": 200,
+                                   "startRfc3339": "now-24h", "endRfc3339": "now", "format": "compact"})
+    last_fired: dict[str, int] = {}
+    try:
+        for st in json.loads(hist).get("streams", []):
+            for l in st["lines"]:
+                j = json.loads(l["line"]); ts = int(l["timestamp"]) // 10**9
+                last_fired[j["ruleTitle"]] = max(last_fired.get(j["ruleTitle"], 0), ts)
+    except Exception:
+        pass
+    print(f"   {'rule':30s} {'state':9s} {'paused':7s} {'for':5s} {'threshold':10s} {'current':10s} last fired (24h)")
+    for r in rules:
+        full = json.loads(mcp("alerting_manage_rules", {"operation": "get", "rule_uid": r["uid"]}) or "{}")
+        expr, thr, op = "", None, ""
+        for d in full.get("data", []):
+            m = d.get("model", {})
+            if m.get("expr"):
+                expr = m["expr"]
+            for c in m.get("conditions", []) or []:
+                ev = c.get("evaluator", {}); thr = (ev.get("params") or [None])[0]; op = ev.get("type", "")
+        cur = "no data"
+        if expr:
+            q = re.sub(r"\s*>\s*bool\s*[0-9.]+$|\s*<\s*bool\s*[0-9.]+$", "", expr)
+            rows = prom(q, "now-10m")
+            if rows:
+                try: cur = f"{float(rows[0]['value'][1]):.3g}"
+                except Exception: cur = rows[0]["value"][1]
+            m2 = re.search(r"(>|<)\s*bool\s*([0-9.]+)", expr)
+            if m2 and thr in (0, None):
+                op, thr = ("gt" if m2.group(1) == ">" else "lt"), float(m2.group(2))
+        lf = dt.datetime.utcfromtimestamp(last_fired[r["title"]]).strftime("%H:%M:%S") if r["title"] in last_fired else "never"
+        flag = " \033[33mPAUSED\033[0m" if full.get("is_paused") else ""
+        print(f"   {r['title']:30s} {r['state']:9s} {str(bool(full.get('is_paused'))):7s} {full.get('for', ''):5s} {op + ' ' + str(thr):10s} {cur:10s} {lf}{flag}")
+    print("\n   Read: a paused rule never pages; a threshold far above the current value during an incident never pages;")
+    print("   a rule that has never fired in 24h while incidents happened is watching the wrong signal.")
+
+
+def hygiene(uid: str = "cortex-publishing-tier") -> None:
+    """Case 7: dashboard and metric hygiene. Missing metrics, histograms without buckets, short rate windows."""
+    print(f"\n\033[1m== Dashboard hygiene, {uid}\033[0m")
+    raw = mcp("get_dashboard_panel_queries", {"uid": uid})
+    try:
+        panels = json.loads(raw)
+    except Exception:
+        print("   " + raw[:300]); return
+    if isinstance(panels, dict):
+        panels = panels.get("panels") or panels.get("queries") or []
+    funcs = {"sum", "rate", "increase", "max", "min", "avg", "count", "by", "le", "or", "and", "vector", "clamp_min", "clamp_max",
+             "histogram_quantile", "max_over_time", "time", "bool", "on", "ignoring", "topk", "label_replace", "abs", "without", "group"}
+    seen: dict[str, bool] = {}; buckets: dict[str, int] = {}; problems = []
+    for p in panels:
+        title = p.get("title") or p.get("panel_title") or "?"
+        for q in p.get("queries", []) if isinstance(p.get("queries"), list) else [p]:
+            expr = q.get("query") or q.get("expr") or ""
+            if not expr or expr.startswith("{"):
+                continue
+            bare = re.sub(r"\{[^}]*\}", "", expr)                       # drop label selectors
+            bare = re.sub(r"\b(by|without|on|ignoring)\s*\([^)]*\)", "", bare)  # drop label lists
+            for name in sorted(set(re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b", bare))):
+                if name in funcs or "_" not in name or name.startswith("$"):
+                    continue
+                if name not in seen:
+                    r = mcp("list_prometheus_metric_names", {"datasourceUid": PROM, "regex": f"^{name}$", "limit": 1})
+                    seen[name] = name in r
+                if not seen[name]:
+                    problems.append((title, name, "metric not found in Mimir", "check the name with list_prometheus_metric_names"))
+                elif name.endswith("_bucket") and name not in buckets:
+                    rows = prom(f"count by (le) ({name})", "now-30m"); buckets[name] = len(rows)
+                    if len(rows) <= 1:
+                        problems.append((title, name, f"histogram has {len(rows)} bucket(s)", "set explicit bucket boundaries; histogram_quantile is meaningless"))
+            for w in re.findall(r"\[(\d+)([smh])\]", expr):
+                secs = int(w[0]) * {"s": 1, "m": 60, "h": 3600}[w[1]]
+                if secs < 60:
+                    problems.append((title, expr[:60], f"range window {w[0]}{w[1]} < 4x scrape interval", "use [1m] or longer"))
+    print(f"   panels scanned: {len(panels)}, metrics checked: {len(seen)}, histograms checked: {len(buckets)}")
+    problems = list(dict.fromkeys(problems))
+    if not problems:
+        print("   no problems found"); return
+    print(f"   {'panel':44s} {'metric / query':44s} {'problem':36s} fix")
+    for t, m, pr, fx in problems:
+        print(f"   {t[:43]:44s} {m[:43]:44s} {pr[:35]:36s} {fx}")
+
+
 if __name__ == "__main__":
     part = sys.argv[1] if len(sys.argv) > 1 else "part3"
-    {"part3": part3, "part4": part4, "part5": part5}[part](*sys.argv[2:])
+    {"part3": part3, "part4": part4, "part5": part5, "paged": paged, "hygiene": hygiene}[part](*sys.argv[2:])
