@@ -2,7 +2,7 @@ SHELL := /bin/bash
 COMPOSE := docker compose --env-file .env -f docker-compose.yml -p cortex
 SVCS    := postgres alloy kafka kafka-exporter cache-redis redis-exporter approvals-api media-service publisher-service content-batch site-reader
 .DEFAULT_GOAL := help
-.PHONY: help up down purge seed batch chaos status grafana logs demo mcp check pub-up pub-down pub-seed pub-batch pub-chaos pub-status pub-grafana pub-logs
+.PHONY: help up down purge seed batch chaos status grafana logs demo mcp check oss-up oss-down mcp-oss grafana-oss pub-up pub-down pub-seed pub-batch pub-chaos pub-status pub-grafana pub-logs
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -34,7 +34,7 @@ logs: ## Tail the app services
 	$(COMPOSE) logs -f --tail=100 approvals-api publisher-service media-service content-batch site-reader
 mcp: ## Start the Grafana MCP server on :8300 with the service-account token from .env
 	@GRAFANA_URL=$$(grep -E '^GRAFANA_URL=' .env | cut -d= -f2-) GRAFANA_SERVICE_ACCOUNT_TOKEN=$$(grep -E '^GRAFANA_SA_TOKEN=' .env | cut -d= -f2-) \
-	  $${MCP_GRAFANA_BIN:-mcp-grafana} -t streamable-http -address localhost:8300
+	  $${MCP_GRAFANA_BIN:-$$(command -v mcp-grafana || echo $$HOME/go/bin/mcp-grafana)} -t streamable-http -address localhost:8300
 demo: ## Run one part of the series demo: make demo P=3   (DEMO_AUTO=1 skips pauses)
 	@bash demos/part$(or $(P),1).sh
 
@@ -47,3 +47,17 @@ pub-chaos: chaos
 pub-status: status
 pub-grafana: grafana
 pub-logs: logs
+
+# ---- self-hosted Grafana OSS target (the same assistant, no cloud) -----------------------------
+oss-up: ## Start Grafana OSS + Prometheus + Loki + Tempo locally (:3001) and make Alloy ship to both destinations
+	$(COMPOSE) --profile oss up -d lgtm
+	ALLOY_CONFIG=config.dual.alloy $(COMPOSE) up -d --force-recreate alloy
+	@echo "✓ Grafana OSS http://localhost:3001 (admin/admin) · Alloy now ships to Grafana Cloud AND local LGTM"
+oss-down: ## Stop the local Grafana OSS stack and put Alloy back to Cloud only
+	$(COMPOSE) --profile oss rm -sf lgtm
+	$(COMPOSE) up -d --force-recreate alloy
+mcp-oss: ## Start a second Grafana MCP server on :8310, pointed at the self-hosted Grafana OSS
+	@GRAFANA_URL=http://localhost:3001 GRAFANA_USERNAME=$${GF_OSS_USER:-admin} GRAFANA_PASSWORD=$${GF_OSS_PASSWORD:-admin} \
+	  $${MCP_GRAFANA_BIN:-$$(command -v mcp-grafana || echo $$HOME/go/bin/mcp-grafana)} -t streamable-http -address localhost:8310
+grafana-oss: ## Push the dashboard + alert rules to the self-hosted Grafana OSS
+	GRAFANA_TARGET=oss python3 grafana/push_grafana.py

@@ -19,7 +19,13 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PROM, LOKI, TEMPO, HIST = "grafanacloud-prom", "grafanacloud-logs", "grafanacloud-traces", "grafanacloud-alert-state-history"
+import os
+# Datasource UIDs: Grafana Cloud defaults; for the self-hosted stack set GRAFANA_TARGET=oss (or the *_UID vars).
+_OSS = os.getenv("GRAFANA_TARGET", "cloud") == "oss"
+PROM = os.getenv("PROM_UID", "prometheus" if _OSS else "grafanacloud-prom")
+LOKI = os.getenv("LOKI_UID", "loki" if _OSS else "grafanacloud-logs")
+TEMPO = os.getenv("TEMPO_UID", "tempo" if _OSS else "grafanacloud-traces")
+HIST = os.getenv("HIST_UID", "loki" if _OSS else "grafanacloud-alert-state-history")
 
 
 def mcp(tool: str, args: dict, limit: int = 200000) -> str:

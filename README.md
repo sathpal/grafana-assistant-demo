@@ -81,6 +81,28 @@ for the 02:00 root cause, a small or local model for the daily report); every ca
 server drives the managed Grafana Assistant too, so there is no lock-in in either direction; and a recipe in git is a
 runbook that executes itself.
 
+## Self-hosted Grafana OSS (no cloud at all)
+
+The same assistant works against a self-hosted, fully open-source Grafana. The repo ships an optional
+[`grafana/otel-lgtm`](https://github.com/grafana/docker-otel-lgtm) container (Grafana OSS + Prometheus + Loki + Tempo)
+and a second Alloy config that fans the same telemetry out to it:
+
+```bash
+make oss-up          # Grafana OSS on http://localhost:3001 (admin/admin); Alloy now ships to Cloud AND local
+make grafana-oss     # the same dashboard + alert rules, pushed to the local Grafana
+make mcp-oss &       # a second mcp-grafana on :8310, authenticated with basic auth against the local Grafana
+GRAFANA_TARGET=oss make demo P=1              # every demo and audit accepts GRAFANA_TARGET=oss
+GRAFANA_TARGET=oss python3 assistant/evidence.py paged
+make oss-down        # back to Cloud only
+```
+
+What changes: the datasource UIDs (`prometheus`, `loki`, `tempo` instead of `grafanacloud-*`) and the credential
+(username/password instead of a service-account token). What does not: the metric names, the `service_name` labels,
+the trace ids, the recipes, the house rules, or the tool calls. Alert state history on OSS Grafana is annotation-based
+unless you configure a Loki backend, so the "when did it last fire" column of the `paged` audit is empty there.
+
+![The same Publishing tier dashboard on self-hosted Grafana OSS 13.2, fed by the dual-destination Alloy config](docs/img/oss-grafana-dashboard.png)
+
 ## Ports and names
 
 Containers are named `cortex-*` so the `service_name` labels match the dashboards, the alert rules and the articles.

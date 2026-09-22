@@ -19,3 +19,6 @@ the command and show the same evidence through `assistant/evidence.py`.
 
 `p3_writes.sh` is the raw-MCP version of the assistant's three writes in Part 5 (annotation, alert rule, panel); it is
 idempotent.
+
+All six demos and both audits also run against the self-hosted Grafana OSS stack: `make oss-up && make mcp-oss &`, then
+`GRAFANA_TARGET=oss make demo P=<n>` (the MCP URL switches to :8310 and links point at http://localhost:3001).

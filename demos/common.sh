@@ -2,7 +2,9 @@
 # Shared helpers for the six demo scripts. Source me.
 # DEMO_AUTO=1 skips the "press Enter" pauses (CI / recording).
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MCP_URL="${MCP_URL:-http://localhost:8300/mcp}"
+# GRAFANA_TARGET=oss -> the self-hosted Grafana OSS stack (make oss-up, make mcp-oss on :8310)
+if [[ "${GRAFANA_TARGET:-cloud}" == "oss" ]]; then MCP_URL="${MCP_URL:-http://localhost:8310/mcp}"; else MCP_URL="${MCP_URL:-http://localhost:8300/mcp}"; fi
+export GRAFANA_TARGET
 export MCP_URL
 c_head=$'\033[1;33m'; c_say=$'\033[1;36m'; c_dim=$'\033[2m'; c_ok=$'\033[32m'; c_err=$'\033[31m'; c_off=$'\033[0m'
 
@@ -29,7 +31,7 @@ require_tier() {
     set -- $u; curl -fsS -m 3 "$1" >/dev/null 2>&1 && ok "$2 up" || { fail "$2 not up ($1) — run: make pub-up"; exit 1; }
   done
 }
-grafana_url() { grep -E '^GRAFANA_URL=' "$ROOT/.env" | cut -d= -f2- | tr -d '\r'; }
+grafana_url() { if [[ "${GRAFANA_TARGET:-cloud}" == "oss" ]]; then echo "${GRAFANA_OSS_URL:-http://localhost:3001}"; else grep -E '^GRAFANA_URL=' "$ROOT/.env" | cut -d= -f2- | tr -d '\r'; fi; }
 
 lag()       { docker exec cortex-kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group publisher-service 2>/dev/null | awk '/cortex/ {s+=$6} END {print s+0}'; }
 redis_mem() { docker exec cortex-cache-redis redis-cli info memory | grep used_memory_human | cut -d: -f2 | tr -d '\r'; }

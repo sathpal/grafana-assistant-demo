@@ -17,18 +17,24 @@ for line in (ROOT / ".env").read_text().splitlines():
     if "=" in line and not line.startswith("#"):
         k, v = line.split("=", 1)
         os.environ.setdefault(k.strip(), v.strip())
-URL = os.environ["GRAFANA_URL"].rstrip("/")
-TOKEN = os.environ["GRAFANA_SA_TOKEN"]
-PROM = "grafanacloud-prom"
-LOKI = "grafanacloud-logs"
-TEMPO = "grafanacloud-traces"
+OSS = os.getenv("GRAFANA_TARGET", "cloud") == "oss"   # GRAFANA_TARGET=oss -> the self-hosted stack on :3001
+URL = (os.getenv("GRAFANA_OSS_URL", "http://localhost:3001") if OSS else os.environ["GRAFANA_URL"]).rstrip("/")
+TOKEN = None if OSS else os.environ["GRAFANA_SA_TOKEN"]
+BASIC = (os.getenv("GF_OSS_USER", "admin"), os.getenv("GF_OSS_PASSWORD", "admin"))
+PROM = os.getenv("PROM_UID", "prometheus" if OSS else "grafanacloud-prom")
+LOKI = os.getenv("LOKI_UID", "loki" if OSS else "grafanacloud-logs")
+TEMPO = os.getenv("TEMPO_UID", "tempo" if OSS else "grafanacloud-traces")
 DASH_UID = "cortex-publishing-tier"
 FOLDER_TITLE = "CORTEX-AKS"
 
 
 def api(method: str, path: str, body=None, headers=None):
     req = urllib.request.Request(URL + path, method=method, data=json.dumps(body).encode() if body is not None else None)
-    req.add_header("Authorization", f"Bearer {TOKEN}")
+    if TOKEN:
+        req.add_header("Authorization", f"Bearer {TOKEN}")
+    else:
+        import base64
+        req.add_header("Authorization", "Basic " + base64.b64encode(f"{BASIC[0]}:{BASIC[1]}".encode()).decode())
     req.add_header("Content-Type", "application/json")
     for k, v in (headers or {}).items():
         req.add_header(k, v)
@@ -246,8 +252,20 @@ def push_rules():
                 {"interval": "1m", "rules": []}, {"X-Disable-Provenance": "true"}) if False else (0, None)
 
 
+def trace_viewer():
+    """A one-panel dashboard that renders any trace id (the demos print its URL)."""
+    return {"uid": "cortex-trace-viewer", "title": "CORTEX-AKS \u2014 Trace viewer", "tags": ["cortex-aks", "tempo"], "schemaVersion": 39, "editable": True,
+            "time": {"from": "now-1h", "to": "now"},
+            "templating": {"list": [{"type": "textbox", "name": "trace_id", "label": "Trace ID", "query": "", "current": {"text": "", "value": ""}}]},
+            "panels": [{"id": 1, "type": "traces", "title": "Trace $trace_id \u2014 one request across Python, Kafka, Java, Go, Redis",
+                        "datasource": ds(TEMPO, "tempo"), "gridPos": {"x": 0, "y": 0, "w": 24, "h": 24},
+                        "targets": [{"datasource": ds(TEMPO, "tempo"), "refId": "A", "queryType": "traceql", "query": "$trace_id", "limit": 20}], "options": {}}]}
+
+
 if __name__ == "__main__":
     FOLDER = folder_uid()
+    st, r = api("POST", "/api/dashboards/db", {"dashboard": trace_viewer(), "folderUid": FOLDER, "overwrite": True, "message": "trace viewer"})
+    print(f"dashboard cortex-trace-viewer: {st}")
     dash = build_dashboard()
     out = ROOT / "grafana" / "dashboards" / f"{DASH_UID}.json"
     out.write_text(json.dumps(dash, indent=2))

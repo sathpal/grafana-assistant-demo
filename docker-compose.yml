@@ -52,7 +52,7 @@ services:
       GRAFANA_CLOUD_INSTANCE_ID: ${GRAFANA_CLOUD_INSTANCE_ID:-}
       GRAFANA_CLOUD_API_TOKEN: ${GRAFANA_CLOUD_API_TOKEN:-}
     volumes:
-      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./infra/alloy/${ALLOY_CONFIG:-config.alloy}:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
     ports:
@@ -83,6 +83,32 @@ services:
       interval: 10s
       timeout: 3s
       retries: 20
+    networks: [cortex]
+
+  # ---- optional: self-hosted Grafana OSS target (profile "oss") -----------------------------------
+  # grafana/otel-lgtm = Grafana + Prometheus + Loki + Tempo + an OTel collector, all open source, in one
+  # container. Alloy fans the same telemetry out to it (config.dual.alloy), and a second mcp-grafana
+  # points the assistant at it: make oss-up && make mcp-oss
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: cortex-lgtm
+    profiles: ["oss"]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_OSS_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_OSS_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      ENABLE_LOGS_ALL: "false"
+    ports:
+      - "3001:3000"     # Grafana OSS
+      - "4417:4317"     # OTLP gRPC (from Alloy, in-network it is lgtm:4317)
+      - "4418:4318"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/api/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
     networks: [cortex]
 
   kafka:
