@@ -14,11 +14,15 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # play nicely with | head
 
 MCP_URL = os.getenv("MCP_URL", "http://localhost:8300/mcp")
 MCP_TIMEOUT = int(os.getenv("MCP_TIMEOUT", "180"))  # seconds; ask_assistant can take minutes
+MCP_AUTH = os.getenv("MCP_AUTH", "")  # optional Authorization header value, e.g. "Bearer glsa_..." or "Basic YWRtaW46YWRtaW4=" (needed for the LLM app's embedded MCP endpoint)
 
 
 def call(name: str, args: dict) -> str:
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}}).encode()
-    req = urllib.request.Request(MCP_URL, data=body, headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
+    headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+    if MCP_AUTH:
+        headers["Authorization"] = MCP_AUTH
+    req = urllib.request.Request(MCP_URL, data=body, headers=headers)
     try:
         r = json.loads(urllib.request.urlopen(req, timeout=MCP_TIMEOUT).read())
     except urllib.error.URLError as e:
@@ -30,7 +34,10 @@ def call(name: str, args: dict) -> str:
 
 def tools() -> list[str]:
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}).encode()
-    req = urllib.request.Request(MCP_URL, data=body, headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
+    headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+    if MCP_AUTH:
+        headers["Authorization"] = MCP_AUTH
+    req = urllib.request.Request(MCP_URL, data=body, headers=headers)
     return [t["name"] for t in json.loads(urllib.request.urlopen(req, timeout=60).read())["result"]["tools"]]
 
 

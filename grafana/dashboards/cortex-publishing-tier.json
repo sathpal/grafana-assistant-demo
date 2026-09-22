@@ -86,7 +86,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -98,7 +98,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(rate(publisher_content_published_total[5m])) * 60",
           "legendFormat": "__auto",
@@ -131,7 +131,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 4,
@@ -143,7 +143,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(increase(publisher_publish_failures_total[15m])) or vector(0)",
           "legendFormat": "__auto",
@@ -190,7 +190,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 8,
@@ -202,7 +202,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(kafka_consumergroup_lag{consumergroup=\"publisher-service\"}) or vector(0)",
           "legendFormat": "__auto",
@@ -253,7 +253,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 12,
@@ -265,7 +265,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(site_reader_latency_seconds_bucket[5m])))",
           "legendFormat": "__auto",
@@ -316,7 +316,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 16,
@@ -328,7 +328,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(rate(media_requests_total{result=\"hit\"}[5m])) / clamp_min(sum(rate(media_requests_total[5m])), 1e-9)",
           "legendFormat": "__auto",
@@ -379,7 +379,7 @@
       "type": "stat",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 20,
@@ -391,7 +391,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "time() - max(cortex_batch_last_run_timestamp_seconds)",
           "legendFormat": "__auto",
@@ -451,7 +451,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -463,7 +463,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum by (topic, partition) (kafka_consumergroup_lag{consumergroup=\"publisher-service\"})",
           "legendFormat": "{{topic}} p{{partition}}",
@@ -500,7 +500,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 8,
@@ -512,7 +512,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum by (source) (rate(publisher_content_published_total[2m])) * 60",
           "legendFormat": "{{source}}",
@@ -549,7 +549,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 16,
@@ -561,7 +561,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.95, sum by (le, source) (rate(publisher_publish_duration_milliseconds_bucket[5m])))",
           "legendFormat": "{{source}}",
@@ -598,7 +598,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -610,7 +610,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum by (reason) (rate(publisher_publish_failures_total[2m])) * 60",
           "legendFormat": "{{reason}}",
@@ -647,7 +647,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 8,
@@ -659,7 +659,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum by (topic) (rate(kafka_topic_partition_current_offset{topic=~\"cortex.*\"}[2m])) * 60",
           "legendFormat": "{{topic}}",
@@ -696,7 +696,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 16,
@@ -708,7 +708,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(hikaricp_connections_active)",
           "legendFormat": "active",
@@ -719,7 +719,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(hikaricp_connections_max)",
           "legendFormat": "max",
@@ -769,7 +769,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -781,7 +781,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum by (result) (rate(media_requests_total[2m])) * 60",
           "legendFormat": "{{result}}",
@@ -818,7 +818,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 8,
@@ -830,7 +830,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(media_render_duration_seconds_bucket[5m])))",
           "legendFormat": "p95",
@@ -867,7 +867,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 16,
@@ -879,7 +879,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "max(media_goroutines)",
           "legendFormat": "goroutines",
@@ -890,7 +890,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(media_leaked_goroutines)",
           "legendFormat": "leaked (chaos)",
@@ -927,7 +927,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -939,7 +939,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "max(redis_memory_used_bytes)",
           "legendFormat": "used",
@@ -950,7 +950,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "max(redis_memory_max_bytes)",
           "legendFormat": "max",
@@ -987,7 +987,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 8,
@@ -999,7 +999,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "rate(redis_evicted_keys_total[2m])",
           "legendFormat": "evicted/s",
@@ -1010,7 +1010,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "rate(redis_keyspace_hits_total[2m]) / clamp_min(rate(redis_keyspace_hits_total[2m]) + rate(redis_keyspace_misses_total[2m]), 1e-9)",
           "legendFormat": "hit ratio",
@@ -1047,7 +1047,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 16,
@@ -1059,7 +1059,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "max(redis_connected_clients)",
           "legendFormat": "clients",
@@ -1109,7 +1109,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -1121,7 +1121,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(jvm_memory_used_bytes{jvm_memory_type=\"heap\", service_name=\"cortex-publisher-service\"})",
           "legendFormat": "used",
@@ -1132,7 +1132,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(jvm_memory_limit_bytes{jvm_memory_type=\"heap\", service_name=\"cortex-publisher-service\"})",
           "legendFormat": "max",
@@ -1169,7 +1169,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 8,
@@ -1181,7 +1181,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.95, sum by (le, jvm_gc_name) (rate(jvm_gc_duration_seconds_bucket{service_name=\"cortex-publisher-service\"}[5m])))",
           "legendFormat": "{{jvm_gc_name}}",
@@ -1218,7 +1218,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 16,
@@ -1230,7 +1230,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "avg(jvm_cpu_recent_utilization_ratio{service_name=\"cortex-publisher-service\"})",
           "legendFormat": "cpu",
@@ -1241,7 +1241,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(jvm_thread_count{service_name=\"cortex-publisher-service\"}) / 100",
           "legendFormat": "threads / 100",
@@ -1291,7 +1291,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -1303,7 +1303,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum by (status, trigger) (increase(cortex_batch_runs_total[15m]))",
           "legendFormat": "{{status}} \u00b7 {{trigger}}",
@@ -1338,7 +1338,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 8,
@@ -1350,7 +1350,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(cortex_batch_duration_seconds_bucket[30m])))",
           "legendFormat": "duration p95 (s)",
@@ -1361,7 +1361,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "max(cortex_batch_last_run_items)",
           "legendFormat": "items (last run)",
@@ -1398,7 +1398,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 16,
@@ -1410,7 +1410,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum(rate(cortex_batch_items_total[2m])) * 60",
           "legendFormat": "items/min",
@@ -1421,7 +1421,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "max(cortex_batch_in_progress) * 100",
           "legendFormat": "in progress \u00d7100",
@@ -1471,7 +1471,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
@@ -1483,7 +1483,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "sum by (status, cache) (rate(site_reader_requests_total[2m])) * 60",
           "legendFormat": "{{status}} \u00b7 {{cache}}",
@@ -1520,7 +1520,7 @@
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
-        "uid": "grafanacloud-prom"
+        "uid": "prometheus"
       },
       "gridPos": {
         "x": 12,
@@ -1532,7 +1532,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.5, sum by (le) (rate(site_reader_latency_seconds_bucket[5m])))",
           "legendFormat": "p50",
@@ -1543,7 +1543,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(site_reader_latency_seconds_bucket[5m])))",
           "legendFormat": "p95",
@@ -1554,7 +1554,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "grafanacloud-prom"
+            "uid": "prometheus"
           },
           "expr": "histogram_quantile(0.99, sum by (le) (rate(site_reader_latency_seconds_bucket[5m])))",
           "legendFormat": "p99",
@@ -1604,7 +1604,7 @@
       "title": "Errors + chaos toggles across the tier (Loki)",
       "datasource": {
         "type": "loki",
-        "uid": "grafanacloud-logs"
+        "uid": "loki"
       },
       "gridPos": {
         "x": 0,
@@ -1616,7 +1616,7 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "grafanacloud-logs"
+            "uid": "loki"
           },
           "refId": "A",
           "expr": "{service_name=~\"cortex-(publisher-service|media-service|content-batch|site-reader|kafka|cache-redis)\"} |~ \"(?i)(error|warn|chaos|batch_(started|finished|config))\""
@@ -1636,7 +1636,7 @@
       "title": "Failing or slow publishes (Tempo) \u2014 click a trace id",
       "datasource": {
         "type": "tempo",
-        "uid": "grafanacloud-traces"
+        "uid": "tempo"
       },
       "gridPos": {
         "x": 12,
@@ -1648,7 +1648,7 @@
         {
           "datasource": {
             "type": "tempo",
-            "uid": "grafanacloud-traces"
+            "uid": "tempo"
           },
           "refId": "A",
           "queryType": "traceql",

@@ -125,6 +125,34 @@ MCP_URL=http://localhost:8320/mcp MCP_TIMEOUT=900 python3 assistant/mcp_call.py 
   '{"prompt":"Which alert rules in folder CORTEX-AKS are paused, and what is the consumer lag of publisher-service by topic? Quote your queries."}'
 ```
 
+## Route C: no separate MCP process, use the LLM app's embedded server (optional)
+
+Grafana's open-source [LLM app](https://grafana.com/grafana/plugins/grafana-llm-app/) (installed by default on Cloud,
+installable on self-hosted) embeds an MCP server inside Grafana itself, at
+`/api/plugins/grafana-llm-app/resources/mcp/grafana` (streamable HTTP). goose can point straight at Grafana, with a
+service-account token in the `Authorization` header, and no `mcp-grafana` process to run:
+
+```bash
+# any MCP client; here the repo's helper
+MCP_URL=https://<stack>.grafana.net/api/plugins/grafana-llm-app/resources/mcp/grafana \
+MCP_AUTH="Bearer $GRAFANA_SA_TOKEN" python3 assistant/mcp_call.py --tools
+```
+
+Tested on both targets. What to know before choosing it over Route A (`make mcp`):
+
+| | standalone `mcp-grafana` v1.5.1 | LLM app 1.0.8 embedded server |
+|---|---|---|
+| tools | 81 | 69 on Cloud, 59 on self-hosted (older bundled build) |
+| Tempo (`search_tempo_traces`, `get_tempo_trace`) | yes | **no**: Parts 3 and 5 need it |
+| `user_info`, `ask_assistant` | yes (assistant opt-in) | no |
+| `--disable-write`, `--disable-*`, server log as audit trail | yes | no per-tool policy; audit via Grafana's own logs |
+| self-hosted auth | token or username/password | a **Bearer service-account token** (basic auth gets 401), and Grafana must run with `GF_FEATURE_TOGGLES_ENABLE=externalServiceAccounts` so the plugin gets its own managed service account (`sa-1-extsvc-grafana-llm-app`); the compose file sets this |
+| runs where | anywhere (laptop, CI, cron) | wherever Grafana is |
+
+The LLM app is also what gives self-hosted Grafana its in-UI AI features (explain a panel, query advisor) with your
+own OpenAI, Azure OpenAI or Anthropic key (`provider:` in its provisioning); on Cloud it defaults to the
+Grafana-managed model. That is a separate thing from the agent in this repo, and this repo does not need it configured.
+
 ## Ports and names
 
 Containers are named `cortex-*` so the `service_name` labels match the dashboards, the alert rules and the articles.
