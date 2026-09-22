@@ -146,6 +146,7 @@ Tested on both targets. What to know before choosing it over Route A (`make mcp`
 | Tempo (`search_tempo_traces`, `get_tempo_trace`) | yes | **no**: Parts 3 and 5 need it |
 | `user_info`, `ask_assistant` | yes (assistant opt-in) | no |
 | Loki time arguments | relative (`now-15m`) or RFC3339 | RFC3339 only (older build); `now-15m` is rejected |
+| `query_prometheus` instant queries | evaluated at `endTime` | evaluated at `startTime` (pass `startTime: now`); `startTime` is required |
 | `--disable-write`, `--disable-*`, server log as audit trail | yes | no per-tool policy; audit via Grafana's own logs |
 | self-hosted auth | token or username/password | a **Bearer service-account token** (basic auth gets 401), and Grafana must run with `GF_FEATURE_TOGGLES_ENABLE=externalServiceAccounts` so the plugin gets its own managed service account (`sa-1-extsvc-grafana-llm-app`); the compose file sets this |
 | runs where | anywhere (laptop, CI, cron) | wherever Grafana is |
