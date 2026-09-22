@@ -1,0 +1,6 @@
+.env
+.DS_Store
+demos/runs/
+services/publisher-service/target/
+__pycache__/
+*.pyc

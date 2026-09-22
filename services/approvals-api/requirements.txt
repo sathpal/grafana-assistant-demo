@@ -1,0 +1,8 @@
+fastapi>=0.115,<0.116
+uvicorn>=0.32,<0.33
+aiokafka>=0.12,<0.13
+opentelemetry-api>=1.29,<2
+opentelemetry-sdk>=1.29,<2
+opentelemetry-exporter-otlp-proto-grpc>=1.29,<2
+opentelemetry-instrumentation-fastapi>=0.50b0,<1
+opentelemetry-instrumentation-aiokafka>=0.50b0,<1

@@ -1,0 +1,41 @@
+server:
+  port: 8085
+spring:
+  application:
+    name: cortex-publisher-service
+  datasource:
+    url: ${POSTGRES_JDBC_URL:jdbc:postgresql://postgres:5432/cortex}
+    username: ${POSTGRES_USER:cortex}
+    password: ${POSTGRES_PASSWORD:cortex_dev_only}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:8}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  data:
+    redis:
+      host: ${CACHE_REDIS_HOST:cache-redis}
+      port: ${CACHE_REDIS_PORT:6379}
+      timeout: 1500ms
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:kafka:9092}
+    consumer:
+      group-id: publisher-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:50}
+    listener:
+      concurrency: ${KAFKA_CONSUMER_CONCURRENCY:1}
+publisher:
+  media-base-url: ${MEDIA_BASE_URL:http://media-service:8086}
+  render-ms: ${RENDER_MS:30}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics,info
+  metrics:
+    tags:
+      application: cortex-publisher-service

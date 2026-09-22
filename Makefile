@@ -1,0 +1,49 @@
+SHELL := /bin/bash
+COMPOSE := docker compose --env-file .env -f docker-compose.yml -p cortex
+SVCS    := postgres alloy kafka kafka-exporter cache-redis redis-exporter approvals-api media-service publisher-service content-batch site-reader
+.DEFAULT_GOAL := help
+.PHONY: help up down purge seed batch chaos status grafana logs demo mcp check pub-up pub-down pub-seed pub-batch pub-chaos pub-status pub-grafana pub-logs
+
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+check: ## Verify .env, docker, and the Grafana Cloud credentials
+	@test -f .env || { echo "✗ .env missing — cp .env.example .env and fill it in"; exit 1; }
+	@docker info >/dev/null 2>&1 && echo "✓ docker" || { echo "✗ docker not running"; exit 1; }
+	@grep -qE '^GRAFANA_CLOUD_API_TOKEN=.+' .env && echo "✓ GRAFANA_CLOUD_API_TOKEN set" || echo "✗ GRAFANA_CLOUD_API_TOKEN empty (OTLP ingest)"
+	@grep -qE '^GRAFANA_SA_TOKEN=.+' .env && echo "✓ GRAFANA_SA_TOKEN set" || echo "✗ GRAFANA_SA_TOKEN empty (dashboards, alerts, annotations, MCP)"
+
+up: ## Build + start the whole tier, shipping telemetry to Grafana Cloud
+	$(COMPOSE) up -d --build $(SVCS)
+	@echo "✓ up · approvals :8000 · publisher :8085 · media :8086 · batch :8087 · alloy UI :12345"
+down: ## Stop everything, keep volumes
+	$(COMPOSE) down
+purge: ## Stop everything and delete volumes
+	$(COMPOSE) down -v
+seed: ## Publish 300 articles through the Java publisher
+	$(COMPOSE) exec content-batch python seed.py
+batch: ## Run one reindex batch now
+	@curl -s -X POST localhost:8087/run; echo
+chaos: ## Toggle a scenario: make chaos S=batch-flood [ON=off]   (S=reset clears all)
+	@bash scripts/chaos.sh $(S) $(or $(ON),on)
+status: ## Chaos + batch state
+	@echo "publisher:"; curl -s localhost:8085/chaos; echo; echo "media:"; curl -s localhost:8086/chaos; echo; echo "batch:"; curl -s localhost:8087/config; echo
+grafana: ## Push the dashboard + 5 alert rules to Grafana Cloud (dashboards-as-code)
+	python3 grafana/push_grafana.py
+logs: ## Tail the app services
+	$(COMPOSE) logs -f --tail=100 approvals-api publisher-service media-service content-batch site-reader
+mcp: ## Start the Grafana MCP server on :8300 with the service-account token from .env
+	@GRAFANA_URL=$$(grep -E '^GRAFANA_URL=' .env | cut -d= -f2-) GRAFANA_SERVICE_ACCOUNT_TOKEN=$$(grep -E '^GRAFANA_SA_TOKEN=' .env | cut -d= -f2-) \
+	  $${MCP_GRAFANA_BIN:-mcp-grafana} -t streamable-http -address localhost:8300
+demo: ## Run one part of the series demo: make demo P=3   (DEMO_AUTO=1 skips pauses)
+	@bash demos/part$(or $(P),1).sh
+
+# aliases used by the articles and demo scripts
+pub-up: up
+pub-down: down
+pub-seed: seed
+pub-batch: batch
+pub-chaos: chaos
+pub-status: status
+pub-grafana: grafana
+pub-logs: logs

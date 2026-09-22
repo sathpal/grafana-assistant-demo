@@ -1,0 +1,137 @@
+// =============================================================================
+// grafana-assistant-demo · Grafana Alloy — one collector, three signals, one destination
+//
+// One collector, three signals, one destination: the Grafana Cloud OTLP
+// gateway (stack: techstronaughtk8s), which routes traces → Tempo,
+// metrics → Mimir, logs → Loki.
+//
+//   ┌ app services ── OTLP gRPC/HTTP ──┐
+//   ├ prometheus /metrics scrape ──────┤→ batch → Grafana Cloud OTLP gateway
+//   └ docker logs (cortex-*) ──────────┘
+//
+// Credentials come from .env via the compose file:
+//   GRAFANA_CLOUD_OTLP_ENDPOINT      e.g. https://otlp-gateway-prod-<region>.grafana.net/otlp
+//   GRAFANA_CLOUD_INSTANCE_ID   numeric stack instance id
+//   GRAFANA_CLOUD_API_TOKEN          glc_… token with metrics/logs/traces:write
+//
+// Alloy's live pipeline UI: http://localhost:12345 (great to show on stage).
+// =============================================================================
+
+// ---- 1. OTLP in from the agents (gen_ai.* spans, token/cost metrics) -------
+otelcol.receiver.otlp "cortex" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces  = [otelcol.processor.batch.cortex.input]
+    metrics = [otelcol.processor.batch.cortex.input]
+    logs    = [otelcol.processor.batch.cortex.input]
+  }
+}
+
+// ---- 2. Prometheus exporters: Kafka consumer lag, Redis memory/evictions -----
+prometheus.scrape "cortex_services" {
+  targets = [
+    { "__address__" = "kafka-exporter:9308", "service_name" = "cortex-kafka" },
+    { "__address__" = "redis-exporter:9121", "service_name" = "cortex-cache-redis" },
+  ]
+  metrics_path    = "/metrics"
+  scrape_interval = "15s"
+  forward_to      = [otelcol.receiver.prometheus.cortex.receiver]
+}
+
+otelcol.receiver.prometheus "cortex" {
+  output {
+    metrics = [otelcol.processor.batch.cortex.input]
+  }
+}
+
+// ---- 3. Container logs → Loki (prompts, retrievals, decisions, tool calls) -
+discovery.docker "cortex" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name   = "name"
+    values = ["cortex-*"]
+  }
+}
+
+discovery.relabel "cortex_logs" {
+  targets = discovery.docker.cortex.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["container"]
+    regex         = "cortex-(.*)"
+    target_label  = "service_name"
+    replacement   = "cortex-$1"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "cortex/docker"
+  }
+}
+
+loki.source.docker "cortex" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.cortex_logs.output
+  forward_to = [otelcol.receiver.loki.cortex.receiver]
+}
+
+otelcol.receiver.loki "cortex" {
+  output {
+    logs = [otelcol.processor.transform.log_identity.input]
+  }
+}
+
+// Promote the docker labels to OTel resource attributes so Grafana Cloud
+// Loki indexes service_name per container instead of "unknown_service".
+otelcol.processor.transform "log_identity" {
+  error_mode = "ignore"
+  log_statements {
+    context = "log"
+    statements = [
+      "set(resource.attributes[\"service.name\"], resource.attributes[\"service_name\"]) where resource.attributes[\"service_name\"] != nil",
+      "set(resource.attributes[\"service.name\"], attributes[\"service_name\"]) where attributes[\"service_name\"] != nil",
+      "set(resource.attributes[\"service.namespace\"], \"cortex\")",
+    ]
+  }
+  output {
+    logs = [otelcol.processor.batch.cortex.input]
+  }
+}
+
+// ---- 4. Batch + ship to Grafana Cloud ---------------------------------------
+otelcol.processor.batch "cortex" {
+  timeout = "5s"
+  output {
+    traces  = [otelcol.exporter.otlphttp.grafana_cloud.input]
+    metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
+    logs    = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
+otelcol.auth.basic "grafana_cloud" {
+  username = sys.env("GRAFANA_CLOUD_INSTANCE_ID")
+  password = sys.env("GRAFANA_CLOUD_API_TOKEN")
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+  client {
+    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+    auth     = otelcol.auth.basic.grafana_cloud.handler
+  }
+  retry_on_failure {
+    enabled          = true
+    max_elapsed_time = "120s"
+  }
+  sending_queue {
+    enabled    = true
+    queue_size = 5000
+  }
+}
