@@ -103,6 +103,28 @@ unless you configure a Loki backend, so the "when did it last fire" column of th
 
 ![The same Publishing tier dashboard on self-hosted Grafana OSS 13.2, fed by the dual-destination Alloy config](docs/img/oss-grafana-dashboard.png)
 
+## Bridging to the managed Grafana Assistant (optional)
+
+mcp-grafana can also hand a question to Grafana Cloud's own Assistant plugin, through an `ask_assistant` tool. It is
+hidden by default for two reasons that are worth knowing:
+
+1. The `assistant` category is **not in the default `--enabled-tools` list**; you must pass the whole list plus `assistant`
+   (`make mcp-assistant` does this, on port 8320).
+2. It **registers only when write tools are enabled**, because the managed Assistant can itself write to the stack, and
+   it can read Loki server-side, so any `--disable-write` or Loki label-enforcement policy on the MCP server does not
+   apply to what it reports back. Treat it as a write tool.
+
+It needs the Assistant plugin (`grafana-assistant-app`) enabled on a Grafana Cloud stack; self-hosted OSS Grafana does
+not have it. The two assistants are then side by side on the same MCP server: the open-source agent calling
+`query_prometheus` and friends, and `ask_assistant` delegating the whole question to Grafana's managed one. That makes
+"same question, both assistants" a one-command comparison:
+
+```bash
+make mcp-assistant &
+MCP_URL=http://localhost:8320/mcp MCP_TIMEOUT=900 python3 assistant/mcp_call.py ask_assistant \
+  '{"prompt":"Which alert rules in folder CORTEX-AKS are paused, and what is the consumer lag of publisher-service by topic? Quote your queries."}'
+```
+
 ## Ports and names
 
 Containers are named `cortex-*` so the `service_name` labels match the dashboards, the alert rules and the articles.

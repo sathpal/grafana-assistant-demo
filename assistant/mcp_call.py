@@ -13,13 +13,14 @@ import urllib.request
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # play nicely with | head
 
 MCP_URL = os.getenv("MCP_URL", "http://localhost:8300/mcp")
+MCP_TIMEOUT = int(os.getenv("MCP_TIMEOUT", "180"))  # seconds; ask_assistant can take minutes
 
 
 def call(name: str, args: dict) -> str:
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}}).encode()
     req = urllib.request.Request(MCP_URL, data=body, headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream"})
     try:
-        r = json.loads(urllib.request.urlopen(req, timeout=180).read())
+        r = json.loads(urllib.request.urlopen(req, timeout=MCP_TIMEOUT).read())
     except urllib.error.URLError as e:
         sys.exit(f"MCP server not reachable at {MCP_URL}: {e.reason}  (start it: make mcp, or make mcp-oss for the self-hosted stack)")
     if "error" in r:

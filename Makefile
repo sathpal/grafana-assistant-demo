@@ -2,7 +2,7 @@ SHELL := /bin/bash
 COMPOSE := docker compose --env-file .env -f docker-compose.yml -p cortex
 SVCS    := postgres alloy kafka kafka-exporter cache-redis redis-exporter approvals-api media-service publisher-service content-batch site-reader
 .DEFAULT_GOAL := help
-.PHONY: help up down purge seed batch chaos status grafana logs demo mcp check oss-up oss-down mcp-oss grafana-oss pub-up pub-down pub-seed pub-batch pub-chaos pub-status pub-grafana pub-logs
+.PHONY: help up down purge seed batch chaos status grafana logs demo mcp check oss-up oss-down mcp-oss grafana-oss mcp-assistant pub-up pub-down pub-seed pub-batch pub-chaos pub-status pub-grafana pub-logs
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -61,3 +61,11 @@ mcp-oss: ## Start a second Grafana MCP server on :8310, pointed at the self-host
 	  $${MCP_GRAFANA_BIN:-$$(command -v mcp-grafana || echo $$HOME/go/bin/mcp-grafana)} -t streamable-http -address localhost:8310
 grafana-oss: ## Push the dashboard + alert rules to the self-hosted Grafana OSS
 	GRAFANA_TARGET=oss python3 grafana/push_grafana.py
+
+# ---- bridge to the managed Grafana Assistant (Cloud stacks with the Assistant plugin) --------------
+# mcp-grafana's "assistant" category is OPT-IN: it is not in the default --enabled-tools list, and it
+# registers ask_assistant only when write tools are enabled (the managed assistant can write).
+MCP_DEFAULT_TOOLS := search,datasource,incident,prometheus,loki,alerting,dashboard,folder,oncall,asserts,sift,pyroscope,navigation,tempo,annotations,rendering,snapshot,plugin,api,config,provisioning,docs,user
+mcp-assistant: ## Start mcp-grafana on :8320 with ask_assistant enabled (bridges to the Cloud Grafana Assistant plugin)
+	@GRAFANA_URL=$$(grep -E '^GRAFANA_URL=' .env | cut -d= -f2-) GRAFANA_SERVICE_ACCOUNT_TOKEN=$$(grep -E '^GRAFANA_SA_TOKEN=' .env | cut -d= -f2-) \
+	  $${MCP_GRAFANA_BIN:-$$(command -v mcp-grafana || echo $$HOME/go/bin/mcp-grafana)} -t streamable-http -address localhost:8320 --enabled-tools=$(MCP_DEFAULT_TOOLS),assistant
