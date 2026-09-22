@@ -17,7 +17,7 @@ for i in 1 2 3 4 5 6; do sleep 2; s=$(site "$slug"); [[ "$s" == "200" ]] && brea
 tid=$(docker logs cortex-api --since 2m 2>&1 | grep content_approved_published | grep "$slug" | tail -1 | python3 -c 'import sys,json;print(json.loads(sys.stdin.read().strip())["trace_id"])' 2>/dev/null || true)
 if [[ -n "$tid" ]]; then
   say "Trace id from the Python API log line: $tid"
-  sleep 8
+  dim "waiting 20 s for Loki and Tempo to index it..."; sleep 20
   run python3 assistant/evidence.py part3 "$slug" | sed -n '/get_tempo_trace/,$p'
   dim "Open it: $(grafana_url)/d/cortex-trace-viewer?var-trace_id=$tid"
 fi
